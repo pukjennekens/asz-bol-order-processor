@@ -27,6 +27,12 @@
                                     </span>
 
                                     <div class="flex gap-2 items-center">
+                                        <select name="action" id="action" class="border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 rounded-md shadow-sm text-xs">
+                                            <option value="packing_slips">Maak pakbonnen</option>
+                                            <option value="shipping_labels">Maak verzendlabels</option>
+                                            <option value="send_to_bol">Verstuur naar bol.com</option>
+                                        </select>
+
                                         <x-primary-button type="submit">Verwerk geselecteerde orders</x-primary-button>
 
                                         <x-dropdown>

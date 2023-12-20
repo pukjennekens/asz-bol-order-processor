@@ -112,8 +112,10 @@ class DashboardController extends Controller
             'order_ids'          => 'required|array',
             'bol_com_account_id' => 'required|integer|exists:bol_accounts,id',
             'is_parcel'          => 'nullable|boolean',
+            'action'             => 'required|in:packing_slips,shipping_labels,send_to_bol',
         ]);
 
+        $action   = $request->action;
         $orderIds = $request->order_ids;
 
         if(!is_array($orderIds) || empty($orderIds)) return redirect('dashboard.account', ['id' => $request->bol_com_account_id]);
@@ -139,67 +141,107 @@ class DashboardController extends Controller
             $orders[] = $order;
         }
 
-        // Make the API request to create the labels
-        $actionID = uniqid();
-        $apiURL   = 'https://bestetelefoonhoesjes.nl/wp-json/asz-order-processing/v1';
-        
-        $data = [
-            'action_id' => $actionID,
-            'parcel'    => $request->is_parcel,
-        ];
+        if($action == 'shipping_labels') {
+            // Make the API request to create the labels
+            $actionID = uniqid();
+            $apiURL   = 'https://bestetelefoonhoesjes.nl/wp-json/asz-order-processing/v1';
+            
+            $data = [
+                'action_id' => $actionID,
+                'parcel'    => $request->is_parcel,
+            ];
 
-        // Split the orders into chunks of 4
-        $chunks = array_chunk($orders, 4);
-        foreach($chunks as $chunk) {
-            $labels = [];
-            foreach($chunk as $order) {
+            // Split the orders into chunks of 4
+            $chunks = array_chunk($orders, 4);
+            foreach($chunks as $chunk) {
+                $labels = [];
+                foreach($chunk as $order) {
+                    /**
+                     * @var \Picqer\BolRetailerV10\Model\Order $order
+                     */
+                    
+                    $labels[] = [
+                        'name'         => $order->shipmentDetails->firstName . ' ' . $order->shipmentDetails->surname,
+                        'street'       => $order->shipmentDetails->streetName . ' ' . $order->shipmentDetails->houseNumber,
+                        'zipcode'      => $order->shipmentDetails->zipCode,
+                        'city'         => $order->shipmentDetails->city,
+                        'country'      => $order->shipmentDetails->countryCode,
+                        'phone_number' => $order->shipmentDetails->deliveryPhoneNumber,
+                        'email'        => $order->shipmentDetails->email,
+                    ];
+                }
+
+                // Make the POST request
+                $response = Http::post($apiURL . '/generate-manual-postnl-labels', array_merge($data, ['labels' => $labels]));
+            }
+
+            $response = Http::get($apiURL . '/merge-manual-postnl-labels', ['action_id' => $actionID]);
+            if($response->json()['message'] == 'labels_merged') {
+                return redirect($response->json()['url']);
+            }
+        }
+
+        if($action == 'send_to_bol') {
+            // Set the orders in Bol to completed
+            $orderItemIds = [];
+            foreach($orders as $order) {
                 /**
                  * @var \Picqer\BolRetailerV10\Model\Order $order
                  */
-                
-                $labels[] = [
-                    'name'         => $order->shipmentDetails->firstName . ' ' . $order->shipmentDetails->surname,
-                    'street'       => $order->shipmentDetails->streetName . ' ' . $order->shipmentDetails->houseNumber,
-                    'zipcode'      => $order->shipmentDetails->zipCode,
-                    'city'         => $order->shipmentDetails->city,
-                    'country'      => $order->shipmentDetails->countryCode,
-                    'phone_number' => $order->shipmentDetails->deliveryPhoneNumber,
-                    'email'        => $order->shipmentDetails->email,
-                ];
+                foreach($order->orderItems as $orderItem) {
+                    $orderItemIds[] = $orderItem->orderItemId;
+                }
             }
 
-            // Make the POST request
-            $response = Http::post($apiURL . '/generate-manual-postnl-labels', array_merge($data, ['labels' => $labels]));
-        }
+            // Split the order item IDs into chunks of 100
+            $chunks = array_chunk($orderItemIds, 100);
+            foreach($chunks as $chunk) {
+                $shipmentRequest = new ShipmentRequest();
+                $shipmentRequest->setOrderItemIds($chunk);
+                $client->shipOrderItem($shipmentRequest);
+            }
 
-        // Set the orders in Bol to completed
-        $orderItemIds = [];
-        foreach($orders as $order) {
-            /**
-             * @var \Picqer\BolRetailerV10\Model\Order $order
-             */
-            foreach($order->orderItems as $orderItem) {
-                $orderItemIds[] = $orderItem->orderItemId;
+            // Empty the order cache for the order items and the bol account's orders
+            Cache::forget('orders-' . $bolAccount->id);
+            foreach($orderIds as $orderId) {
+                Cache::forget('order-' . $orderId);
             }
         }
 
-        // Split the order item IDs into chunks of 100
-        $chunks = array_chunk($orderItemIds, 100);
-        foreach($chunks as $chunk) {
-            $shipmentRequest = new ShipmentRequest();
-            $shipmentRequest->setOrderItemIds($chunk);
-            $client->shipOrderItem($shipmentRequest);
-        }
+        if($action == 'packing_slips') {
+            $mpdf = new \Mpdf\Mpdf( array(
+                'mode'                 => 'utf-8',
+                'format'               => 'A4',
+                'orientation'          => 'P',
+                'margin_left'          => 10,
+                'margin_right'         => 10,
+                'margin_top'           => 10,
+                'margin_bottom'        => 10,
+                'margin_header'        => 0,
+                'margin_footer'        => 0,
+                'setAutoTopMargin'     => 'stretch',
+                'setAutoBottomMargin'  => 'stretch',
+                'default_font_size'    => 10,
+                'default_font'         => 'helvetica',
+            ) );
 
-        // Empty the order cache for the order items and the bol account's orders
-        Cache::forget('orders-' . $bolAccount->id);
-        foreach($orderIds as $orderId) {
-            Cache::forget('order-' . $orderId);
-        }
+            foreach($orders as $order) {
+                $mpdf->WriteHTML(view('pdf.packing-slip', [
+                    'order' => $order,
+                ])->render());
 
-        $response = Http::get($apiURL . '/merge-manual-postnl-labels', ['action_id' => $actionID]);
-        if($response->json()['message'] == 'labels_merged') {
-            return redirect($response->json()['url']);
+                // Check if we need to add a page break
+                if($order != end($orders)) {
+                    $mpdf->AddPage();
+                }
+            }
+
+            $pdf = $mpdf->Output('', 'S');
+
+            return response($pdf, 200, [
+                'Content-Type'        => 'application/pdf',
+                'Content-Disposition' => 'inline; filename="packing_slips.pdf"',
+            ]);
         }
     }
 }
