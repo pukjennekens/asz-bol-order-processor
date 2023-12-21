@@ -7,6 +7,13 @@
         "framework"
     ],
     "license": "MIT",
+    "repositories": [
+        {
+            "type": "vcs",
+            "url": "https://github.com/WoutervanderLoopNL/bol-retailer-php-client",
+            "no-api": true
+        }
+    ],
     "require": {
         "php": "^8.1",
         "guzzlehttp/guzzle": "^7.8",
@@ -14,10 +21,10 @@
         "laravel/sanctum": "^3.3",
         "laravel/tinker": "^2.8",
         "mxl/laravel-job": "^1.5",
-        "picqer/bol-retailer-php-client": "^10",
         "setasign/fpdi": "^2.5",
         "setasign/fpdf": "^1.8",
-        "mpdf/mpdf": "^8.2"
+        "mpdf/mpdf": "^8.2",
+        "picqer/bol-retailer-php-client": "dev-develop-finalize-v10"
     },
     "require-dev": {
         "fakerphp/faker": "^1.9.1",

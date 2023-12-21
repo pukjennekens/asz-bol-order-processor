@@ -7,7 +7,11 @@ use App\Models\BolAccount;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
+use Picqer\BolRetailerV10\Exception\ResponseException;
+use Picqer\BolRetailerV10\Model\OrderItem;
 use Picqer\BolRetailerV10\Model\ShipmentRequest;
+use Picqer\BolRetailerV10\Model\TransportInstruction;
 
 class DashboardController extends Controller
 {
@@ -183,22 +187,31 @@ class DashboardController extends Controller
 
         if($action == 'send_to_bol') {
             // Set the orders in Bol to completed
-            $orderItemIds = [];
+            $orderItems = [];
             foreach($orders as $order) {
                 /**
                  * @var \Picqer\BolRetailerV10\Model\Order $order
                  */
                 foreach($order->orderItems as $orderItem) {
-                    $orderItemIds[] = $orderItem->orderItemId;
+                    $_order_item = new OrderItem();
+                    $_order_item->orderItemId = $orderItem->orderItemId;
+                    $_order_item->quantity    = $orderItem->quantity;
+                    $orderItems[] = $_order_item;
                 }
             }
 
             // Split the order item IDs into chunks of 100
-            $chunks = array_chunk($orderItemIds, 100);
+            $chunks = array_chunk($orderItems, 100);
             foreach($chunks as $chunk) {
                 $shipmentRequest = new ShipmentRequest();
-                $shipmentRequest->setOrderItemIds($chunk);
-                $client->shipOrderItem($shipmentRequest);
+                $shipmentRequest->orderItems = $chunk;
+                
+                $transport = new TransportInstruction();
+                $transport->transporterCode = 'TNT';
+
+                $shipmentRequest->transport = $transport;
+
+                $client->createShipment($shipmentRequest);   
             }
 
             // Empty the order cache for the order items and the bol account's orders
@@ -206,6 +219,8 @@ class DashboardController extends Controller
             foreach($orderIds as $orderId) {
                 Cache::forget('order-' . $orderId);
             }
+
+            return redirect(route('dashboard.account', $bolAccount->id));
         }
 
         if($action == 'packing_slips') {
