@@ -63,7 +63,7 @@
                         </td>
 
                         <td>
-                            {{ $orderItem->quantity }} &times
+                            {{ $orderItem->quantity }} &times;
                         </td>
 
                         <td>

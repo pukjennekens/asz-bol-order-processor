@@ -215,10 +215,9 @@ class DashboardController extends Controller
             }
 
             // Empty the order cache for the order items and the bol account's orders
+            foreach($orderIds as $orderId) Cache::forget('order-' . $orderId);
+
             Cache::forget('orders-' . $bolAccount->id);
-            foreach($orderIds as $orderId) {
-                Cache::forget('order-' . $orderId);
-            }
 
             return redirect(route('dashboard.account', $bolAccount->id));
         }
