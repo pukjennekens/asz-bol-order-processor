@@ -17,7 +17,7 @@
                     </x-nav-link>
 
                     @foreach(\App\Models\BolAccount::all() as $bolAccount)
-                        <x-nav-link :href="route('dashboard.account', $bolAccount->id)" :active="request()->routeIs('dashboard.account', $bolAccount->id)">
+                        <x-nav-link :href="route('dashboard.account', $bolAccount->id)" :active="url()->current() == route('dashboard.account', ['id' => $bolAccount->id])">
                             {{ $bolAccount->name }}
                         </x-nav-link>
                     @endforeach
@@ -82,7 +82,7 @@
             </x-responsive-nav-link>
 
             @foreach(\App\Models\BolAccount::all() as $bolAccount)
-                <x-responsive-nav-link :href="route('dashboard.account', $bolAccount->id)" :active="request()->routeIs('dashboard.account', $bolAccount->id)">
+                <x-responsive-nav-link :href="route('dashboard.account', $bolAccount->id)" :active="url()->current() == route('dashboard.account', ['id' => $bolAccount->id])">
                     {{ $bolAccount->name }}
                 </x-responsive-nav-link>
             @endforeach
