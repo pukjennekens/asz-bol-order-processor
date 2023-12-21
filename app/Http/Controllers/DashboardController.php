@@ -94,6 +94,7 @@ class DashboardController extends Controller
 
         foreach($reducedOrders as $order) {
             if(Cache::get('order-' . $order->orderId)) {
+                if(Cache::get('order-' . $order->orderId) === false) continue;
                 $order = Cache::get('order-' . $order->orderId);
             } else {
                 $order = $client->getOrder($order->orderId);
@@ -215,7 +216,10 @@ class DashboardController extends Controller
             }
 
             // Empty the order cache for the order items and the bol account's orders
-            foreach($orderIds as $orderId) Cache::forget('order-' . $orderId);
+            foreach($orderIds as $orderId) {
+                Cache::forget('order-' . $orderId);
+                Cache::put('order-' . $orderId, false, 60 * 120);
+            };
 
             Cache::forget('orders-' . $bolAccount->id);
 
