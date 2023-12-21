@@ -104,6 +104,11 @@ class DashboardController extends Controller
             $orders[] = $order;
         }
 
+        // Sort orders by orderId (descending)
+        usort($orders, function($a, $b) {
+            return $b->orderId <=> $a->orderId;
+        });
+
         return view('dashboard.orders-overview', [
             'bolAccount' => $bolAccount,
             'orders'     => $orders,
@@ -146,6 +151,11 @@ class DashboardController extends Controller
             $orders[] = $order;
         }
 
+        // Sort orders by orderId (descending)
+        usort($orders, function($a, $b) {
+            return $b->orderId <=> $a->orderId;
+        });
+
         if($action == 'shipping_labels') {
             // Make the API request to create the labels
             $actionID = uniqid();
@@ -166,6 +176,7 @@ class DashboardController extends Controller
                      */
                     
                     $labels[] = [
+                        'id'           => $order->orderId,
                         'name'         => $order->shipmentDetails->firstName . ' ' . $order->shipmentDetails->surname,
                         'street'       => $order->shipmentDetails->streetName . ' ' . $order->shipmentDetails->houseNumber,
                         'zipcode'      => $order->shipmentDetails->zipCode,
