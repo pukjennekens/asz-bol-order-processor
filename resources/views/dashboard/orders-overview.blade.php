@@ -100,7 +100,7 @@
                                                     {{ $order->shipmentDetails->countryCode }}
                                                 </td>
                                                 <td class="px-6 py-4">
-                                                    <ul class="min-w-64">
+                                                    <ul class="min-w-64 list-decimal">
                                                         @foreach($order->orderItems as $orderItem)
                                                             <li>{{ $orderItem->product->title }}</li>
                                                         @endforeach
