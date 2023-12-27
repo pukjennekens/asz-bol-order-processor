@@ -209,6 +209,9 @@ class DashboardController extends Controller
         }
 
         if($action == 'send_to_bol') {
+            Log::info('Sending orders to Bol.com', [
+                'order_ids' => $orderIds,
+            ]);
             // Set the orders in Bol to completed
             $singleOrders = [];
             $multiOrders  = [];
@@ -233,6 +236,9 @@ class DashboardController extends Controller
             }
 
             // Process the single orders
+            Log::info('Sending single orders to Bol.com', [
+                'orders' => $singleOrders,
+            ]);
             $chunks = array_chunk($singleOrders, 100);
             foreach($chunks as $chunk) {
                 $shipmentRequest = new ShipmentRequest();
@@ -243,10 +249,21 @@ class DashboardController extends Controller
 
                 $shipmentRequest->transport = $transport;
 
+                Log::info('Sending single order to Bol.com', [
+                    'shipment_request' => $shipmentRequest,
+                ]);
+
                 $response = $client->createShipment($shipmentRequest); 
+
+                Log::info('Response from Bol.com', [
+                    'response' => $response,
+                ]);
             }
 
             // Process the multi orders
+            Log::info('Sending multi orders to Bol.com', [
+                'orders' => $multiOrders,
+            ]);
             foreach($multiOrders as $order) {
                 $shipmentRequest = new ShipmentRequest();
                 $shipmentRequest->orderItems = $order;
@@ -256,10 +273,21 @@ class DashboardController extends Controller
 
                 $shipmentRequest->transport = $transport;
 
+                Log::info('Sending multi order to Bol.com', [
+                    'shipment_request' => $shipmentRequest,
+                ]);
+
                 $response = $client->createShipment($shipmentRequest); 
+
+                Log::info('Response from Bol.com', [
+                    'response' => $response,
+                ]);
             }
 
             // Empty the order cache for the order items and the bol account's orders
+            Log::info('Emptying the cache for the order items and bol account\'s orders', [
+                'order_ids' => $orderIds,
+            ]);
             foreach($orderIds as $orderId) {
                 Cache::forget('order-' . $orderId);
                 Cache::put('order-' . $orderId, 'recently_deleted', 60 * 120);
