@@ -80,10 +80,20 @@ class DashboardController extends Controller
          */
         $reducedOrders = [];
 
-        if(Cache::get('orders-' . $bolAccount->id)) {
+        if(Cache::get('orders-' . $bolAccount->id) && Cache::get('orders-' . $bolAccount->id) != 'recently_pushed') {
             $reducedOrders = Cache::get('orders-' . $bolAccount->id);
         } else {
-            $reducedOrders = $client->getOrders();
+            // Get the $reducedOrders = $client->getOrders();. If the page size is 50 we need to get the next page as well, keep doing this until the page size is less than 50.
+            $page          = 1;
+            $pageSize      = 50;
+            $reducedOrders = $client->getOrders($page);
+
+            while(count($reducedOrders) == $pageSize) {
+                $reducedOrders = array_merge($reducedOrders, $orders);
+                $page++;
+                $orders = $client->getOrders($page);
+            }
+
             Cache::put('orders-' . $bolAccount->id, $reducedOrders, 60 * 5);
         }
 
@@ -233,6 +243,7 @@ class DashboardController extends Controller
             };
 
             Cache::forget('orders-' . $bolAccount->id);
+            Cache::put('orders-' . $bolAccount->id, 'recently_pushed', 60 * 5);
 
             return redirect(route('dashboard.account', $bolAccount->id));
         }
