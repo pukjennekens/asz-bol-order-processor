@@ -210,8 +210,8 @@ class DashboardController extends Controller
 
         if($action == 'send_to_bol') {
             // Set the orders in Bol to completed
-            $orderItems = [];
             foreach($orders as $order) {
+                $orderItems = [];
                 /**
                  * @var \Picqer\BolRetailerV10\Model\Order $order
                  */
@@ -221,20 +221,19 @@ class DashboardController extends Controller
                     $_order_item->quantity    = $orderItem->quantity;
                     $orderItems[] = $_order_item;
                 }
-            }
 
-            // Split the order item IDs into chunks of 100
-            $chunks = array_chunk($orderItems, 100);
-            foreach($chunks as $chunk) {
-                $shipmentRequest = new ShipmentRequest();
-                $shipmentRequest->orderItems = $chunk;
-                
-                $transport = new TransportInstruction();
-                $transport->transporterCode = 'TNT';
+                $chunks = array_chunk($orderItems, 100);
+                foreach($chunks as $chunk) {
+                    $shipmentRequest = new ShipmentRequest();
+                    $shipmentRequest->orderItems = $chunk;
+                    
+                    $transport = new TransportInstruction();
+                    $transport->transporterCode = 'TNT';
 
-                $shipmentRequest->transport = $transport;
+                    $shipmentRequest->transport = $transport;
 
-                $client->createShipment($shipmentRequest);   
+                    $response = $client->createShipment($shipmentRequest);
+                }
             }
 
             // Empty the order cache for the order items and the bol account's orders
