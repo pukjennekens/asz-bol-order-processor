@@ -210,6 +210,9 @@ class DashboardController extends Controller
 
         if($action == 'send_to_bol') {
             // Set the orders in Bol to completed
+            $singleOrders = [];
+            $multiOrders  = [];
+
             foreach($orders as $order) {
                 $orderItems = [];
                 /**
@@ -222,18 +225,38 @@ class DashboardController extends Controller
                     $orderItems[] = $_order_item;
                 }
 
-                $chunks = array_chunk($orderItems, 100);
-                foreach($chunks as $chunk) {
-                    $shipmentRequest = new ShipmentRequest();
-                    $shipmentRequest->orderItems = $chunk;
-                    
-                    $transport = new TransportInstruction();
-                    $transport->transporterCode = 'TNT';
-
-                    $shipmentRequest->transport = $transport;
-
-                    $response = $client->createShipment($shipmentRequest);
+                if(count($orderItems) == 1) {
+                    $singleOrders[] = $orderItems[0];
+                } else {
+                    $multiOrders[] = $orderItems;
                 }
+            }
+
+            // Process the single orders
+            $chunks = array_chunk($singleOrders, 100);
+            foreach($chunks as $chunk) {
+                $shipmentRequest = new ShipmentRequest();
+                $shipmentRequest->orderItems = $chunk;
+                
+                $transport = new TransportInstruction();
+                $transport->transporterCode = 'TNT';
+
+                $shipmentRequest->transport = $transport;
+
+                $response = $client->createShipment($shipmentRequest); 
+            }
+
+            // Process the multi orders
+            foreach($multiOrders as $order) {
+                $shipmentRequest = new ShipmentRequest();
+                $shipmentRequest->orderItems = $order;
+                
+                $transport = new TransportInstruction();
+                $transport->transporterCode = 'TNT';
+
+                $shipmentRequest->transport = $transport;
+
+                $response = $client->createShipment($shipmentRequest); 
             }
 
             // Empty the order cache for the order items and the bol account's orders
