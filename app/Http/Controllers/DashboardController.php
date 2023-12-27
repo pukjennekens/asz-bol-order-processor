@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\API\BolClient;
+use App\Jobs\SendShipmentToBol;
 use App\Models\BolAccount;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
@@ -213,8 +214,7 @@ class DashboardController extends Controller
                 'order_ids' => $orderIds,
             ]);
             // Set the orders in Bol to completed
-            $singleOrders = [];
-            $multiOrders  = [];
+            $delay      = 0;
 
             foreach($orders as $order) {
                 $orderItems = [];
@@ -228,60 +228,11 @@ class DashboardController extends Controller
                     $orderItems[] = $_order_item;
                 }
 
-                if(count($orderItems) == 1) {
-                    $singleOrders[] = $orderItems[0];
-                } else {
-                    $multiOrders[] = $orderItems;
-                }
-            }
+                // Send the order to Bol.com
+                SendShipmentToBol::dispatch($orderItems, $bolAccount)->delay(now()->addMilliseconds($delay));
 
-            // Process the single orders
-            Log::info('Sending single orders to Bol.com', [
-                'orders' => $singleOrders,
-            ]);
-            $chunks = array_chunk($singleOrders, 100);
-            foreach($chunks as $chunk) {
-                $shipmentRequest = new ShipmentRequest();
-                $shipmentRequest->orderItems = $chunk;
-                
-                $transport = new TransportInstruction();
-                $transport->transporterCode = 'TNT';
-
-                $shipmentRequest->transport = $transport;
-
-                Log::info('Sending single order to Bol.com', [
-                    'shipment_request' => $shipmentRequest,
-                ]);
-
-                $response = $client->createShipment($shipmentRequest); 
-
-                Log::info('Response from Bol.com', [
-                    'response' => $response,
-                ]);
-            }
-
-            // Process the multi orders
-            Log::info('Sending multi orders to Bol.com', [
-                'orders' => $multiOrders,
-            ]);
-            foreach($multiOrders as $order) {
-                $shipmentRequest = new ShipmentRequest();
-                $shipmentRequest->orderItems = $order;
-                
-                $transport = new TransportInstruction();
-                $transport->transporterCode = 'TNT';
-
-                $shipmentRequest->transport = $transport;
-
-                Log::info('Sending multi order to Bol.com', [
-                    'shipment_request' => $shipmentRequest,
-                ]);
-
-                $response = $client->createShipment($shipmentRequest); 
-
-                Log::info('Response from Bol.com', [
-                    'response' => $response,
-                ]);
+                // Rate limit is 25 requests per second, so we need to delay the requests. Also add 5ms to the delay for each order to make sure we don't hit the rate limit.
+                $delay += 45;
             }
 
             // Empty the order cache for the order items and the bol account's orders
