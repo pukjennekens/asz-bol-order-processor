@@ -88,9 +88,10 @@ class DashboardController extends Controller
             $pageSize      = 50;
             $reducedOrders = $client->getOrders($page);
 
-            while(count($reducedOrders) == $pageSize) {
+            while(count($reducedOrders) % $pageSize == 0) {
                 $page++;
                 $orders = $client->getOrders($page);
+                if(count($orders) == 0) break;
                 $reducedOrders = array_merge($reducedOrders, $orders);
             }
 
