@@ -89,9 +89,9 @@ class DashboardController extends Controller
             $reducedOrders = $client->getOrders($page);
 
             while(count($reducedOrders) == $pageSize) {
-                $reducedOrders = array_merge($reducedOrders, $orders);
                 $page++;
                 $orders = $client->getOrders($page);
+                $reducedOrders = array_merge($reducedOrders, $orders);
             }
 
             Cache::put('orders-' . $bolAccount->id, $reducedOrders, 60 * 5);
