@@ -179,7 +179,9 @@ class DashboardController extends Controller
             ];
 
             // Split the orders into chunks of 4
-            $chunks = array_chunk($orders, 4);
+            // $chunks = array_chunk($orders, 4);
+            $chunks = array_chunk($orders, 1);
+
             foreach($chunks as $chunk) {
                 $labels = [];
                 foreach($chunk as $order) {
