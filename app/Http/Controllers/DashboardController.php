@@ -13,6 +13,10 @@ use Picqer\BolRetailerV10\Exception\ResponseException;
 use Picqer\BolRetailerV10\Model\OrderItem;
 use Picqer\BolRetailerV10\Model\ShipmentRequest;
 use Picqer\BolRetailerV10\Model\TransportInstruction;
+use setasign\Fpdi\Fpdi;
+use setasign\Fpdi\TcpdfFpdi;
+use TCPDF;
+use TCPDF_STATIC;
 
 class DashboardController extends Controller
 {
@@ -169,46 +173,165 @@ class DashboardController extends Controller
         });
 
         if($action == 'shipping_labels') {
-            // Make the API request to create the labels
-            $actionID = uniqid();
-            $apiURL   = 'https://bestetelefoonhoesjes.nl/wp-json/asz-order-processing/v1';
-            
-            $data = [
-                'action_id' => $actionID,
-                'parcel'    => $request->is_parcel,
-            ];
+            $labels = [];
+            foreach($orders as $order) {
+                /**
+                 * @var \Picqer\BolRetailerV10\Model\Order $order
+                 */
+                
+                $labels[] = [
+                    'id'           => $order->orderId,
+                    'name'         => $order->shipmentDetails->firstName . ' ' . $order->shipmentDetails->surname,
+                    'street'       => $order->shipmentDetails->streetName . ' ' . $order->shipmentDetails->houseNumber,
+                    'zipcode'      => $order->shipmentDetails->zipCode,
+                    'city'         => $order->shipmentDetails->city,
+                    'country'      => $order->shipmentDetails->countryCode,
+                    'phone_number' => $order->shipmentDetails->deliveryPhoneNumber,
+                    'email'        => $order->shipmentDetails->email,
+                ];
+            }
 
-            // Split the orders into chunks of 4
-            // $chunks = array_chunk($orders, 4);
-            $chunks = array_chunk($orders, 1);
+            $postNL = Http::withHeader('apikey', env('POSTNL_API_KEY'));
 
-            foreach($chunks as $chunk) {
-                $labels = [];
-                foreach($chunk as $order) {
-                    /**
-                     * @var \Picqer\BolRetailerV10\Model\Order $order
-                     */
-                    
-                    $labels[] = [
-                        'id'           => $order->orderId,
-                        'name'         => $order->shipmentDetails->firstName . ' ' . $order->shipmentDetails->surname,
-                        'street'       => $order->shipmentDetails->streetName . ' ' . $order->shipmentDetails->houseNumber,
-                        'zipcode'      => $order->shipmentDetails->zipCode,
-                        'city'         => $order->shipmentDetails->city,
-                        'country'      => $order->shipmentDetails->countryCode,
-                        'phone_number' => $order->shipmentDetails->deliveryPhoneNumber,
-                        'email'        => $order->shipmentDetails->email,
-                    ];
+            $shipments = [];
+
+            foreach($labels as $key => $label) {
+                $parameters = [
+                    'CustomerCode'   => env('POSTNL_CUSTOMER_CODE'),
+                    'CustomerNumber' => env('POSTNL_CUSTOMER_NUMBER'),
+                    'Type'           => '3S',
+                ];
+    
+                if( $order->shipmentDetails->countryCode != 'NL' ) {
+                    $parameters['Type']  = 'UE';
+                    $parameters['Serie'] = '00000000-99999999';
+                    $parameters['Range'] = 'NL';
                 }
 
-                // Make the POST request
-                $response = Http::post($apiURL . '/generate-manual-postnl-labels', array_merge($data, ['labels' => $labels]));
+                $barcodeResponse = $postNL->get('https://api.postnl.nl/shipment/v1_1/barcode', $parameters);
+                Log::debug('PostNL barcode response', [
+                    'response' => $barcodeResponse,
+                ]);
+                $label['barcode'] = $barcodeResponse['Barcode'];
+
+                $product_code_delivery = '2929';
+
+                $country = $label['country'];
+                $type    = $request->is_parcel ? 2 : 1;
+
+                if ($country == 'NL' && $type == 1) {
+                    // Envelop nl-nl:2928
+                    $product_code_delivery = '2929';
+                } else if ($country == 'NL' && $type == 2) {
+                    // Pakket nl-nl:3085
+                    $product_code_delivery = '3085';
+                } else if ($country == 'BE' && $type == 1) {
+                    // Envelop nl-be:4946
+                    $product_code_delivery = '6945';
+                } else if ($country == 'BE' && $type == 2) {
+                    // Pakket nl-be:4912
+                    $product_code_delivery = '6945';
+                }
+
+                $shipments[] = [
+                    'Addresses'           => [
+                        // Reciever
+                        [
+                            'AddressType' => '01',
+                            'City'        => $label['city'],
+                            'Countrycode' => $label['country'],
+                            'Name'        => $label['name'],
+                            'Street'      => $label['street'],
+                            'Zipcode'     => $label['zipcode'],
+                        ],
+                        // Sender we need to add some settings for this
+                        [
+                            'AddressType' => '02',
+                            'City'        => 'Elsloo',
+                            'Countrycode' => 'NL',
+                            'Name'        => 'Pixel One',
+                            'Street'      => 'Op de Dries 57',
+                            'Zipcode'     => '6181JK',
+                        ],
+                    ],
+                    'Barcode'             => $label['barcode'],
+                    'Contacts'            => [
+                        [
+                            'ContactType' => '01',
+                            'Email'       => $label['email'],
+                            'SMSNr'       => $label['phone_number'],
+                        ],
+                    ],
+                    'DeliveryDate'        => date( 'd-m-Y H:i:s', strtotime( '+1 day' ) ),
+                    'Dimension'           => [
+                        'Weight' => '2000',
+                    ],
+                    'ProductCodeDelivery' => $product_code_delivery,
+                    'Reference'           => $order->orderId,
+                    'Remark'              => 'Fragile',
+                    'OrderNr'             => $order->orderId,
+                ];
             }
 
-            $response = Http::get($apiURL . '/merge-manual-postnl-labels', ['action_id' => $actionID]);
-            if($response->json()['message'] == 'labels_merged') {
-                return redirect($response->json()['url']);
+            $body = [
+                'Customer' => [
+                    'CustomerCode'   => env('POSTNL_CUSTOMER_CODE'),
+                    'CustomerNumber' => env('POSTNL_CUSTOMER_NUMBER'),
+                ],
+                'Message' => [
+                    'MessageID'        => $order->orderId,
+                    'MessageTimeStamp' => date( 'd-m-Y H:i:s' ),
+                    'Printertype'      => 'GraphicFile|PDF',
+                ],
+                'Shipments' => $shipments,
+            ];
+
+            Log::debug('PostNL request', [
+                'body' => $body,
+            ]);
+
+            $response = $postNL->post('https://api.postnl.nl/shipment/v2_2/label', $body)->json();
+
+            Log::debug('PostNL response', [
+                'response' => $response,
+            ]);
+
+            $pdf = new TcpdfFpdi('P', 'mm', array(148, 105), true, 'UTF-8', false);
+            $pdf->setPrintHeader(false);
+            $pdf->setPrintFooter(false);
+
+            foreach ($response['ResponseShipments'] as $shipment) {
+                if (!isset($shipment['Labels'][0]['Content'])) {
+                    continue;
+                }
+
+                $decodedLabel = base64_decode($shipment['Labels'][0]['Content']);
+                if ($decodedLabel === false) {
+                    continue;
+                }
+
+                $tmpFile = tempnam(sys_get_temp_dir(), 'pdf');
+                file_put_contents($tmpFile, $decodedLabel);
+
+                $pdf->AddPage();
+
+                $pdf->setSourceFile($tmpFile);
+                $tplIdx = $pdf->importPage(1);
+
+                // Rotate and place the label correctly
+                $pdf->Rotate(90); // Rotate 90 degrees around the center of the page
+                $pdf->useTemplate($tplIdx, -125, 0, 148, 105); // Adjust the placement accordingly
+                $pdf->Rotate(0);
+
+                unlink($tmpFile);
             }
+
+            $pdfOutput = $pdf->Output('labels.pdf', 'S'); // Output to a string
+
+            return response($pdfOutput, 200, [
+                'Content-Type' => 'application/pdf',
+                'Content-Disposition' => 'inline; filename="labels.pdf"',
+            ]);
         }
 
         if($action == 'send_to_bol') {

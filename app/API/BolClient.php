@@ -34,6 +34,7 @@
         {
             $client = new Client();
             $client->authenticateByClientCredentials(self::$clientId, self::$clientSecret);
+            $client->setDemoMode(true);
 
             return $client;
         }
