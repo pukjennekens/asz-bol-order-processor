@@ -21,6 +21,7 @@
         "laravel/framework": "^10.10",
         "laravel/sanctum": "^3.3",
         "laravel/tinker": "^2.8",
+        "mpdf/mpdf": "^8.2",
         "mxl/laravel-job": "^1.5",
         "picqer/bol-retailer-php-client": "dev-develop-finalize-v10",
         "setasign/fpdf": "^1.8",

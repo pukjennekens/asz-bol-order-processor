@@ -134,10 +134,14 @@ class DashboardController extends Controller
 
     public function processOrders(Request $request)
     {
+        Log::debug('Processing orders', [
+            'request' => $request->all(),
+        ]);
+
         $request->validate([
             'order_ids'          => 'required|array',
             'bol_com_account_id' => 'required|integer|exists:bol_accounts,id',
-            'is_parcel'          => 'nullable|boolean',
+            'is_parcel'          => 'nullable|in:on,off',
             'action'             => 'required|in:packing_slips,shipping_labels,send_to_bol',
         ]);
 
@@ -202,7 +206,7 @@ class DashboardController extends Controller
                     'Type'           => '3S',
                 ];
     
-                if( $order->shipmentDetails->countryCode != 'NL' ) {
+                if( $label['country'] != 'NL' ) {
                     $parameters['Type']  = 'UE';
                     $parameters['Serie'] = '00000000-99999999';
                     $parameters['Range'] = 'NL';
@@ -217,7 +221,7 @@ class DashboardController extends Controller
                 $product_code_delivery = '2929';
 
                 $country = $label['country'];
-                $type    = $request->is_parcel ? 2 : 1;
+                $type    = $request->is_parcel == 'on' ? 2 : 1;
 
                 if ($country == 'NL' && $type == 1) {
                     // Envelop nl-nl:2928
