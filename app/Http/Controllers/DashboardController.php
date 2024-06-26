@@ -251,11 +251,11 @@ class DashboardController extends Controller
                         // Sender we need to add some settings for this
                         [
                             'AddressType' => '02',
-                            'City'        => 'Elsloo',
+                            'City'        => 'Zwolle',
                             'Countrycode' => 'NL',
-                            'Name'        => 'Pixel One',
-                            'Street'      => 'Op de Dries 57',
-                            'Zipcode'     => '6181JK',
+                            'Name'        => 'E-Commerce',
+                            'Street'      => 'Paxtonstraat 4',
+                            'Zipcode'     => '8013RP',
                         ],
                     ],
                     'Barcode'             => $label['barcode'],
