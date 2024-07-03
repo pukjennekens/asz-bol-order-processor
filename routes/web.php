@@ -25,6 +25,9 @@ Route::post('/dashboard/process-orders', [DashboardController::class, 'processOr
 Route::get('/dashboard/settings', [DashboardController::class, 'settings'])->middleware(['auth', 'verified'])->name('dashboard.settings');
 Route::get('/dashboard/settings/delete/{id}', [DashboardController::class, 'deleteBolAccount'])->middleware(['auth', 'verified'])->name('dashboard.settings.delete');
 
+Route::get('/dashboard/manual-labels', [DashboardController::class, 'manualLabels'])->middleware(['auth', 'verified'])->name('dashboard.manual-labels');
+Route::post('/dashboard/manual-labels', [DashboardController::class, 'createManualLabels'])->middleware(['auth', 'verified'])->name('dashboard.manual-labels.post');
+
 Route::get('/dashboard/settings/add', [DashboardController::class, 'addBolAccount'])->middleware(['auth', 'verified'])->name('dashboard.settings.add');
 Route::post('/dashboard/settings/add', [DashboardController::class, 'storeBolAccount'])->middleware(['auth', 'verified'])->name('dashboard.settings.store');
 

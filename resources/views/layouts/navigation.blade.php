@@ -22,6 +22,10 @@
                         </x-nav-link>
                     @endforeach
 
+                    <x-nav-link :href="route('dashboard.manual-labels')" :active="request()->routeIs('dashboard.manual-labels')">
+                        {{ __('Handmatig labels aanmaken') }}
+                    </x-nav-link>
+
                     <x-nav-link :href="route('dashboard.settings')" :active="request()->routeIs('dashboard.settings')">
                         {{ __('Instellingen') }}
                     </x-nav-link>
@@ -86,6 +90,10 @@
                     {{ $bolAccount->name }}
                 </x-responsive-nav-link>
             @endforeach
+
+            <x-responsive-nav-link :href="route('dashboard.manual-labels')" :active="request()->routeIs('dashboard.manual-labels')">
+                {{ __('Handmatig labels aanmaken') }}
+            </x-responsive-nav-link>
 
             <x-responsive-nav-link :href="route('dashboard.settings')" :active="request()->routeIs('dashboard.settings')">
                 {{ __('Instellingen') }}
