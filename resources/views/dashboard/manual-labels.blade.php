@@ -22,7 +22,7 @@
                             <div class="mb-4 border p-4 rounded">
                                 <div class="flex items-center justify-between">
                                     <h3 class="text-lg font-semibold mb-2">Adres <span x-text="index + 1"></span></h3>
-                                    <button x-on:click="removeField(index)" class="inline-flex items-center px-4 py-2 bg-red-500 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-red-600 focus:bg-red-700 active:bg-red-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 transition ease-in-out duration-150">Verwijderen</button>
+                                    <button x-show="fields.length > 1" x-on:click="removeField(index)" class="inline-flex items-center px-4 py-2 bg-red-500 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-red-600 focus:bg-red-700 active:bg-red-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 transition ease-in-out duration-150">Verwijderen</button>
                                 </div>
 
                                 <div class="mb-2 flex items-center gap-2">
