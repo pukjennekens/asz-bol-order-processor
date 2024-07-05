@@ -60,7 +60,7 @@ class SendShipmentToBol implements ShouldQueue
             'shipment_request' => $shipmentRequest,
         ]);
 
-        $response = $client->createShipment($shipmentRequest); 
+        $response = $client->createShipment($shipmentRequest);
 
         Log::info('Response from Bol.com', [
             'response' => $response,
