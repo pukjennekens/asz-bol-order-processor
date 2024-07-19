@@ -4,11 +4,14 @@ namespace App\Http\Controllers;
 
 use App\API\BolClient;
 use App\Jobs\SendShipmentToBol;
+use App\Mail\Invoice;
+use App\Mail\TrackingCode;
 use App\Models\BolAccount;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Mail;
 use Picqer\BolRetailerV10\Exception\ResponseException;
 use Picqer\BolRetailerV10\Model\OrderItem;
 use Picqer\BolRetailerV10\Model\ShipmentRequest;
@@ -290,6 +293,11 @@ class DashboardController extends Controller
                 'Shipments' => $shipments,
             ];
 
+            foreach($shipments as $shipment) {
+                Log::debug('Sending an tracking code mail to: ' . $shipment['Contacts'][0]['Email']);
+                Mail::to($shipment['Contacts'][0]['Email'])->send(new TrackingCode($shipment['Barcode'], $shipment['Addresses'][0]['Countrycode'], $shipment['Addresses'][0]['Zipcode']));
+            }
+
             Log::debug('PostNL request', [
                 'body' => $body,
             ]);
@@ -303,6 +311,10 @@ class DashboardController extends Controller
             $pdf = new TcpdfFpdi('P', 'mm', array(148, 105), true, 'UTF-8', false);
             $pdf->setPrintHeader(false);
             $pdf->setPrintFooter(false);
+
+            foreach($response['ResponseShipments'] as $shipment) {
+                
+            }
 
             foreach ($response['ResponseShipments'] as $shipment) {
                 if (!isset($shipment['Labels'][0]['Content'])) {
@@ -362,6 +374,14 @@ class DashboardController extends Controller
 
                 // Rate limit is 25 requests per second, so we need to delay the requests. Also add 5ms to the delay for each order to make sure we don't hit the rate limit.
                 $delay += 45;
+            }
+
+            foreach($orders as $order) {
+                /**
+                 * @var \Picqer\BolRetailerV10\Model\Order $order
+                 */
+
+                Mail::to($order->shipmentDetails->email)->send(new Invoice($order));
             }
 
             // Empty the order cache for the order items and the bol account's orders
