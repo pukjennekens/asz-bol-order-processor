@@ -52,7 +52,7 @@ class SendShipmentToBol implements ShouldQueue
         $shipmentRequest->orderItems = $this->orderItems;
         
         $transport = new TransportInstruction();
-        $transport->transporterCode = 'TNT';
+        $transport->transporterCode = 'TNT_BRIEF';
 
         $shipmentRequest->transport = $transport;
 
