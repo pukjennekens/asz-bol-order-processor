@@ -12,7 +12,7 @@ use Illuminate\Support\Facades\Log;
 use Picqer\BolRetailerV10\Model\Order;
 use Illuminate\Mail\Mailables\Attachment;
 
-class Invoice extends Mailable
+class Invoice extends Mailable implements ShouldQueue
 {
     use Queueable, SerializesModels;
 
