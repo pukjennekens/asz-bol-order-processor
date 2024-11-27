@@ -111,6 +111,8 @@
                                     let error = '';
 
                                     if (field === 'isParcel') return;
+                                    if (field === 'email' ) return;
+                                    if (field === 'phone_number') return;
 
                                     if (value.trim() === '') {
                                         const fieldName = field.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase());
