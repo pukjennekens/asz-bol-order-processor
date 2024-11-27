@@ -115,10 +115,6 @@
                                     if (value.trim() === '') {
                                         const fieldName = field.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase());
                                         error = `${fieldName} is verplicht.`;
-                                    } else if (field === 'email' && !/\S+@\S+\.\S+/.test(value)) {
-                                        error = 'Invalid email address.';
-                                    } else if (field === 'phone_number' && !/^\d{10}$/.test(value)) {
-                                        error = 'Phone number must be 10 digits.';
                                     }
 
                                     this.errors[index][field] = error;
