@@ -193,7 +193,7 @@ class DashboardController extends Controller
                     'zipcode'      => $order->shipmentDetails->zipCode,
                     'city'         => $order->shipmentDetails->city,
                     'country'      => $order->shipmentDetails->countryCode,
-                    'phone_number' => $order->shipmentDetails->deliveryPhoneNumber,
+                    'phone_number' => $order->shipmentDetails->deliveryPhoneNumber ?? '0612345678',
                     'email'        => $order->shipmentDetails->email,
                 ];
             }
@@ -451,8 +451,8 @@ class DashboardController extends Controller
             '*.zipcode'      => 'required',
             '*.city'         => 'required',
             '*.country'      => 'required|in:NL,BE',
-            '*.phone_number' => 'required',
-            '*.email'        => 'required',
+            '*.phone_number' => 'nullable',
+            '*.email'        => 'email',
             '*.isParcel'    => 'nullable',
         ]);
         
@@ -524,7 +524,7 @@ class DashboardController extends Controller
                         [
                             'ContactType' => '01',
                             'Email'       => $label['email'],
-                            'SMSNr'       => $label['phone_number'],
+                            'SMSNr'       => $label['phone_number'] ?? '0612345678',
                         ],
                     ],
                     'DeliveryDate'        => date( 'd-m-Y H:i:s', strtotime( '+1 day' ) ),
