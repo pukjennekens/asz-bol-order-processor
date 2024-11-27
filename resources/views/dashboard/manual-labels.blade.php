@@ -111,12 +111,16 @@
                                     let error = '';
 
                                     if (field === 'isParcel') return;
-                                    if (field === 'email' ) return;
-                                    if (field === 'phone_number') return;
 
-                                    if (value.trim() === '') {
-                                        const fieldName = field.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase());
-                                        error = `${fieldName} is verplicht.`;
+                                    if (field === 'name' || field === 'street' || field === 'zipcode' || field === 'city' || field === 'country') {
+                                        if (value.trim() === '') {
+                                            const fieldName = field.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase());
+                                            error = `${fieldName} is verplicht.`;
+                                        }
+                                    } else if (field === 'email' && value.trim() !== '' && !/\S+@\S+\.\S+/.test(value)) {
+                                        error = 'Invalid email address.';
+                                    } else if (field === 'phone_number' && value.trim() !== '' && !/^\d{10}$/.test(value)) {
+                                        error = 'Phone number must be 10 digits.';
                                     }
 
                                     this.errors[index][field] = error;
@@ -124,13 +128,24 @@
                                 submit() {
                                     // Validate all fields
                                     this.fields.forEach((field, index) => {
-                                        Object.keys(field).forEach(key => {
+                                        const requiredFields = ['name', 'street', 'zipcode', 'city', 'country'];
+                                        requiredFields.forEach(key => {
                                             this.validateField(index, key);
+                                        });
+
+                                        // Optional validation for email and phone number
+                                        ['email', 'phone_number'].forEach(key => {
+                                            if (field[key].trim() !== '') {
+                                                this.validateField(index, key);
+                                            }
                                         });
                                     });
 
+
                                     // Check if there are any errors
-                                    const hasErrors = this.errors.some(error => Object.values(error).some(value => value !== ''));
+                                    const hasErrors = this.errors.some(error => 
+                                        ['name', 'street', 'zipcode', 'city', 'country'].some(key => error[key] !== '')
+                                    );
                                     if (hasErrors) return;
 
                                     // Submit the form

@@ -193,7 +193,7 @@ class DashboardController extends Controller
                     'zipcode'      => $order->shipmentDetails->zipCode,
                     'city'         => $order->shipmentDetails->city,
                     'country'      => $order->shipmentDetails->countryCode,
-                    'phone_number' => $order->shipmentDetails->deliveryPhoneNumber ?? '0612345678',
+                    'phone_number' => $order->shipmentDetails->deliveryPhoneNumber,
                     'email'        => $order->shipmentDetails->email,
                 ];
             }
@@ -452,8 +452,8 @@ class DashboardController extends Controller
             '*.city'         => 'required',
             '*.country'      => 'required|in:NL,BE',
             '*.phone_number' => 'nullable',
-            '*.email'        => 'email',
-            '*.isParcel'    => 'nullable',
+            '*.email'        => 'nullable|email',
+            '*.isParcel'     => 'nullable',
         ]);
         
         $postNL = Http::withHeader('apikey', env('POSTNL_API_KEY'));
@@ -524,7 +524,7 @@ class DashboardController extends Controller
                         [
                             'ContactType' => '01',
                             'Email'       => $label['email'],
-                            'SMSNr'       => $label['phone_number'] ?? '0612345678',
+                            'SMSNr'       => $label['phone_number'],
                         ],
                     ],
                     'DeliveryDate'        => date( 'd-m-Y H:i:s', strtotime( '+1 day' ) ),
