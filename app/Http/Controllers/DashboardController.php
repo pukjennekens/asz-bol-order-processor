@@ -146,7 +146,7 @@ class DashboardController extends Controller
             'order_ids'          => 'required|array',
             'bol_com_account_id' => 'required|integer|exists:bol_accounts,id',
             'is_parcel'          => 'nullable|in:on,off',
-            'action'             => 'required|in:packing_slips,shipping_labels,send_to_bol',
+            'action'             => 'required|in:packing_slips,shipping_labels,send_to_bol,shipping_labels_without_tracking',
         ]);
 
         $action   = $request->action;
@@ -349,6 +349,36 @@ class DashboardController extends Controller
                 'Content-Type' => 'application/pdf',
                 'Content-Disposition' => 'inline; filename="labels.pdf"',
             ]);
+        }
+
+        if($action == 'shipping_labels_without_tracking'){
+            $labels = [];
+
+            foreach($orders as $order) {
+    
+                $labels[] = [
+                    'id'           => $order->orderId,
+                    'name'         => $order->shipmentDetails->firstName . ' ' . $order->shipmentDetails->surname,
+                    'street'       => $order->shipmentDetails->streetName . ' ' . $order->shipmentDetails->houseNumber,
+                    'zipcode'      => $order->shipmentDetails->zipCode,
+                    'city'         => $order->shipmentDetails->city,
+                    'country'      => $order->shipmentDetails->countryCode,
+                    'phone_number' => $order->shipmentDetails->deliveryPhoneNumber,
+                    'email'        => $order->shipmentDetails->email,
+                ];
+            }
+
+
+            $senderData = [
+                'AddressType' => '02',
+                'City'        => 'Zwolle',
+                'Countrycode' => 'NL',
+                'Name'        => 'E-Commerce',
+                'Street'      => 'Paxtonstraat 4',
+                'Zipcode'     => '8013RP',
+            ];
+
+            return $this->generateCustomLabelPdf($senderData, $labels);    
         }
 
         if($action == 'send_to_bol') {

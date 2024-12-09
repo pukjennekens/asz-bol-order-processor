@@ -30,6 +30,7 @@
                                         <select name="action" id="action" class="border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 rounded-md shadow-sm text-xs w-full">
                                             <option value="packing_slips">Maak pakbonnen</option>
                                             <option value="shipping_labels">Maak verzendlabels</option>
+                                            <option value="shipping_labels_without_tracking">Maak verzendlabels zonder tracking</option>
                                             <option value="send_to_bol">Verstuur naar bol.com</option>
                                         </select>
 
