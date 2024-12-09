@@ -75,6 +75,16 @@
                                     <input type="email" x-model="field.email" x-on:change="validateField(index, 'email')" class="w-full border-gray-300 rounded-md shadow-sm focus:border-primary-300 focus:ring focus:ring-primary-200 focus:ring-opacity-50">
                                     <span x-show="errors[index]?.email" class="text-red-500 text-sm" x-text="errors[index]?.email"></span>
                                 </div>
+
+                                <div class="mb-2">
+                                    <label class="font-bold mb-2">Versturen met Track & trace</label>
+                                    <select class="w-full border-gray-300 rounded-md shadow-sm focus:border-primary-300 focus:ring focus:ring-primary-200 focus:ring-opacity-50" x-model="field.track" x-on:change="validateField(index, 'track')">
+                                        <option value="">Selecteer een optie</option>
+                                        <option value="1">Ja</option>
+                                        <option value="0">Nee</option>
+                                    </select>
+                                    <span x-show="errors[index]?.track" class="text-red-500 text-sm" x-text="errors[index]?.country"></span>
+                                </div>
                             </div>
                         </template>
 
@@ -93,14 +103,14 @@
                             return {
                                 loading: false,
                                 fields: [
-                                    { name: '', street: '', zipcode: '', city: '', country: '', phone_number: '', email: '', isParcel: false }
+                                    { name: '', street: '', zipcode: '', city: '', country: '', phone_number: '', email: '', isParcel: false , track: ''  }
                                 ],
                                 errors: [
-                                    { name: '', street: '', zipcode: '', city: '', country: '', phone_number: '', email: '', isParcel: '' }
+                                    { name: '', street: '', zipcode: '', city: '', country: '', phone_number: '', email: '', isParcel: '', track: '' }
                                 ],
                                 addField() {
-                                    this.fields.push({ name: '', street: '', zipcode: '', city: '', country: '', phone_number: '', email: '', isParcel: false });
-                                    this.errors.push({ name: '', street: '', zipcode: '', city: '', country: '', phone_number: '', email: '', isParcel: '' });
+                                    this.fields.push({ name: '', street: '', zipcode: '', city: '', country: '', phone_number: '', email: '', isParcel: false, track: '' });
+                                    this.errors.push({ name: '', street: '', zipcode: '', city: '', country: '', phone_number: '', email: '', isParcel: '', track: '' });
                                 },
                                 removeField(index) {
                                     this.fields.splice(index, 1);
@@ -112,10 +122,10 @@
 
                                     if (field === 'isParcel') return;
 
-                                    if (field === 'name' || field === 'street' || field === 'zipcode' || field === 'city' || field === 'country') {
+                                    if (field === 'name' || field === 'street' || field === 'zipcode' || field === 'city' || field === 'country' || field === 'track' ) {
                                         if (value.trim() === '') {
                                             const fieldName = field.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase());
-                                            error = `${fieldName} is verplicht.`;
+                                            error = `Dit is verplicht.`;
                                         }
                                     } else if (field === 'email' && value.trim() !== '' && !/\S+@\S+\.\S+/.test(value)) {
                                         error = 'Invalid email address.';
@@ -128,7 +138,7 @@
                                 submit() {
                                     // Validate all fields
                                     this.fields.forEach((field, index) => {
-                                        const requiredFields = ['name', 'street', 'zipcode', 'city', 'country'];
+                                        const requiredFields = ['name', 'street', 'zipcode', 'city', 'country' ,'track'];
                                         requiredFields.forEach(key => {
                                             this.validateField(index, key);
                                         });

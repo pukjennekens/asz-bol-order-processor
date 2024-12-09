@@ -20,6 +20,7 @@ use setasign\Fpdi\Fpdi;
 use setasign\Fpdi\TcpdfFpdi;
 use TCPDF;
 use TCPDF_STATIC;
+use Barryvdh\DomPDF\Facade\Pdf;
 
 class DashboardController extends Controller
 {
@@ -443,6 +444,42 @@ class DashboardController extends Controller
         ]);
     }
 
+    public function generateCustomLabelPdf($senderData, $labels)
+    {
+        foreach ($labels as &$label) {
+            $label['formattedZipcode'] = strtoupper(str_replace(' ', '', $label['zipcode']));
+
+            $label['barcode'] = (function ($text) {
+                $width = 820;
+                $height = 250;
+                $image = imagecreatetruecolor($width, $height);
+                $backgroundColor = imagecolorallocate($image, 255, 255, 255);
+                imagefill($image, 0, 0, $backgroundColor);
+                $textColor = imagecolorallocate($image, 0, 0, 0);
+                $fontPath = public_path('fonts/KIX.ttf');
+                imagettftext($image, 60, 0, 50, 50, $textColor, $fontPath, $text);
+                ob_start();
+                imagepng($image);
+                $imageData = ob_get_clean();
+                imagedestroy($image);
+
+                return 'data:image/png;base64,' . base64_encode($imageData);
+            })($label['formattedZipcode']);
+        }
+
+        $logoImage = 'data:image/jpeg;base64,' . base64_encode(file_get_contents(public_path('post-nl-logo.jpg')));
+        $data = [
+            'labels'        => $labels,
+            'senderData'    => $senderData,
+            'logoImage'     => $logoImage,
+        ];
+
+        $pdf = Pdf::loadView('pdf.custom-label', $data)
+                ->setPaper([0, 0, 297, 420], 'portrait');
+
+        return $pdf->stream('label.pdf');
+    }
+
     public function createManualLabels()
     {
         $labels = request()->validate([
@@ -454,12 +491,34 @@ class DashboardController extends Controller
             '*.phone_number' => 'nullable',
             '*.email'        => 'nullable|email',
             '*.isParcel'     => 'nullable',
+            '*.track'        => 'required',
         ]);
-        
-        $postNL = Http::withHeader('apikey', env('POSTNL_API_KEY'));
+
+        if(isset($labels[0])){
+            $track = $labels[0]['track'];
+            if($track == '1'){
+                $sendWithTracking = true;
+            } else{
+                $sendWithTracking = false;
+            }
+        } else{
+            $sendWithTracking = true;
+        }
+
+        $senderData = [
+            'AddressType' => '02',
+            'City'        => 'Zwolle',
+            'Countrycode' => 'NL',
+            'Name'        => 'E-Commerce',
+            'Street'      => 'Paxtonstraat 4',
+            'Zipcode'     => '8013RP',
+        ];
+
+        if($sendWithTracking){
+            $postNL = Http::withHeader('apikey', env('POSTNL_API_KEY'));
 
             $shipments = [];
-
+    
             foreach($labels as $key => $label) {
                 $parameters = [
                     'CustomerCode'   => env('POSTNL_CUSTOMER_CODE'),
@@ -472,18 +531,18 @@ class DashboardController extends Controller
                     $parameters['Serie'] = '00000000-99999999';
                     $parameters['Range'] = 'NL';
                 }
-
+    
                 $barcodeResponse = $postNL->get('https://api.postnl.nl/shipment/v1_1/barcode', $parameters);
                 Log::debug('PostNL barcode response', [
                     'response' => $barcodeResponse,
                 ]);
                 $label['barcode'] = $barcodeResponse['Barcode'];
-
+    
                 $product_code_delivery = '2929';
-
+    
                 $country = $label['country'];
                 $type    = $label['isParcel'] ? 2 : 1;
-
+    
                 if ($country == 'NL' && $type == 1) {
                     // Envelop nl-nl:2928
                     $product_code_delivery = '2929';
@@ -497,7 +556,7 @@ class DashboardController extends Controller
                     // Pakket nl-be:4912
                     $product_code_delivery = '6945';
                 }
-
+    
                 $shipments[] = [
                     'Addresses'           => [
                         // Reciever
@@ -510,14 +569,7 @@ class DashboardController extends Controller
                             'Zipcode'     => $label['zipcode'],
                         ],
                         // Sender we need to add some settings for this
-                        [
-                            'AddressType' => '02',
-                            'City'        => 'Zwolle',
-                            'Countrycode' => 'NL',
-                            'Name'        => 'E-Commerce',
-                            'Street'      => 'Paxtonstraat 4',
-                            'Zipcode'     => '8013RP',
-                        ],
+                        $senderData,
                     ],
                     'Barcode'             => $label['barcode'],
                     'Contacts'            => [
@@ -537,7 +589,7 @@ class DashboardController extends Controller
                     'OrderNr'             => $key,
                 ];
             }
-
+    
             $body = [
                 'Customer' => [
                     'CustomerCode'   => env('POSTNL_CUSTOMER_CODE'),
@@ -550,52 +602,55 @@ class DashboardController extends Controller
                 ],
                 'Shipments' => $shipments,
             ];
-
+    
             Log::debug('PostNL request', [
                 'body' => $body,
             ]);
-
+    
             $response = $postNL->post('https://api.postnl.nl/shipment/v2_2/label', $body)->json();
-
+    
             Log::debug('PostNL response', [
                 'response' => $response,
             ]);
-
+    
             $pdf = new TcpdfFpdi('P', 'mm', array(148, 105), true, 'UTF-8', false);
             $pdf->setPrintHeader(false);
             $pdf->setPrintFooter(false);
-
+    
             foreach ($response['ResponseShipments'] as $shipment) {
                 if (!isset($shipment['Labels'][0]['Content'])) {
                     continue;
                 }
-
+    
                 $decodedLabel = base64_decode($shipment['Labels'][0]['Content']);
                 if ($decodedLabel === false) {
                     continue;
                 }
-
+    
                 $tmpFile = tempnam(sys_get_temp_dir(), 'pdf');
                 file_put_contents($tmpFile, $decodedLabel);
-
+    
                 $pdf->AddPage();
-
+    
                 $pdf->setSourceFile($tmpFile);
                 $tplIdx = $pdf->importPage(1);
-
+    
                 // Rotate and place the label correctly
                 $pdf->Rotate(90); // Rotate 90 degrees around the center of the page
                 $pdf->useTemplate($tplIdx, -125, 0, 148, 105); // Adjust the placement accordingly
                 $pdf->Rotate(0);
-
+    
                 unlink($tmpFile);
             }
-
+    
             $pdfOutput = $pdf->Output('labels.pdf', 'S'); // Output to a string
-
+    
             return response($pdfOutput, 200, [
                 'Content-Type' => 'application/pdf',
                 'Content-Disposition' => 'inline; filename="labels.pdf"',
             ]);
+        } else {
+            return $this->generateCustomLabelPdf($senderData, $labels);    
+        }
     }
 }
